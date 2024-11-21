@@ -5,114 +5,83 @@
  * @format
  */
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {FlatList, PermissionsAndroid, Text, View} from 'react-native';
+const SmsAndroid = require('react-native-get-sms-android');
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
-
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
-
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+const Item = ({item}: any) => {
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
+    <View>
+      <Text>{item.address}</Text>
+      <Text>{item.body}</Text>
+      <Text>{new Date(item.date).toLocaleString()}</Text>
+    </View>
+  );
+};
+
+function App(): React.JSX.Element {
+  const [smsList, setSMSList] = useState([]);
+
+  async function requestSmsPermission() {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_SMS,
+        {
+          title: 'SMS Permission',
+          message: 'This app needs access to your message',
+          buttonNeutral: 'Ask me later',
+          buttonPositive: 'Ok',
+          buttonNegative: 'Cancel',
+        },
+      );
+
+      console.log(granted, "Grsnted")
+
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    } catch (error) {
+      console.log(error);
+      return false;
+    }
+  }
+
+  useEffect(() => {
+    async function fetchSms() {
+      const hasPermission = await requestSmsPermission();
+      console.log("Hello", hasPermission, PermissionsAndroid.RESULTS)
+      if (hasPermission) {
+        SmsAndroid.list(
+          JSON.stringify({
+            box: 'inbox',
+            maxCount: 10,
+          }),
+          (err: any) => {
+            console.log('Something went wrong: ' + err);
           },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
+          // eslint-disable-next-line @typescript-eslint/no-shadow
+          (count: any, smsList: any) => {
+            const messages = JSON.parse(smsList);
+            setSMSList(messages);
           },
-        ]}>
-        {children}
-      </Text>
+        );
+      }
+    }
+
+    fetchSms();
+  }, []);
+
+  return (
+    <View>
+      {/* <Text>{hasPermission ? "Yes" : "No"}</Text> */}
+      <FlatList
+        data={smsList}
+        renderItem={Item}
+        keyExtractor={(item, index) => index.toString()}
+        ListEmptyComponent={<Text>NO SMS FOUND</Text>}
+      />
     </View>
   );
 }
 
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
-
 export default App;
+
+// npx react-native start
